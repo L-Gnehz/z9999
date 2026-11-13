@@ -1,7 +1,8 @@
 /* ==========================================
-   首页卡片样式定制 (Home Grid Customization)
+   手动卡片 & 自动卡片 统一样式
    ========================================== */
 
+/* --- 1. 针对你手动写的 HTML 卡片 (home-grid) --- */
 .home-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -17,18 +18,17 @@
   border: 1px solid var(--lightgray);
   border-radius: 12px;
   background-color: var(--light);
-  text-decoration: none !important; /* 去掉下划线 */
+  text-decoration: none !important;
   color: inherit !important;
   transition: all 0.3s ease;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
-/* 鼠标悬停时的特效 */
 .home-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
   border-color: var(--secondary);
-  background-color: var(--lightgray); /* 暗色模式下会自动适配 */
+  background-color: var(--lightgray);
 }
 
 .card-icon {
@@ -46,5 +46,64 @@
   margin: 0;
   font-size: 0.9rem;
   color: var(--darkgray);
+  line-height: 1.5;
+}
+
+/* --- 2. 针对自动生成的最近笔记卡片 (recent-notes) --- */
+.recent-notes {
+  margin-top: 2rem;
+}
+
+.recent-notes h3 {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid var(--lightgray);
+  padding-bottom: 0.5rem;
+}
+
+.recent-notes > ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.recent-notes > ul > li {
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  border: 1px solid var(--lightgray);
+  border-radius: 12px;
+  background-color: var(--light);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  margin: 0;
+}
+
+.recent-notes > ul > li:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+  border-color: var(--secondary);
+  background-color: var(--lightgray);
+}
+
+.recent-notes > ul > li a {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--secondary);
+  text-decoration: none !important;
+  margin-bottom: 0.5rem;
+}
+
+.recent-notes > ul > li a:hover {
+  text-decoration: underline !important;
+}
+
+.recent-notes > ul > li p, 
+.recent-notes > ul > li time {
+  font-size: 0.85rem;
+  color: var(--darkgray);
+  margin: 0;
   line-height: 1.5;
 }
