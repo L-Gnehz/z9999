@@ -1,13 +1,13 @@
 
 **报告日期**：2026-10-16  
-**分析对象**：hlsqhcdb1（RHEL 7.6，Oracle RAC 节点）  
-**数据来源**：sosreport-hlsqhcdb1-2026-10-16-buyxklm  
+**分析对象**：localhost（RHEL 7.6，Oracle RAC 节点）  
+**数据来源**：sosreport-localhost-2026-10-16-buyxklm  
 **故障现象**：整机无响应（Hang），持续约数分钟后自行恢复，未重启
 
 
 ## 1. 故障概述
 
-2026-10-16 上午，主机 `hlsqhcdb1` 出现整机无响应。系统日志显示，在 10:42:30 至 10:44:30 期间，内核连续报告多个 Oracle RAC 相关进程（`orarootagent.bi`、`gipcd.bin`）进入不可中断睡眠状态（D 状态），触发 hung task 检测机制。系统未发生重启，`journalctl --list-boots` 显示仅有一次启动记录（10:39:29 至 16:02:53），说明系统在 hang 后自行恢复。
+2026-10-16 上午，主机 `localhost` 出现整机无响应。系统日志显示，在 10:42:30 至 10:44:30 期间，内核连续报告多个 Oracle RAC 相关进程（`orarootagent.bi`、`gipcd.bin`）进入不可中断睡眠状态（D 状态），触发 hung task 检测机制。系统未发生重启，`journalctl --list-boots` 显示仅有一次启动记录（10:39:29 至 16:02:53），说明系统在 hang 后自行恢复。
 
 **核心结论**：本次 hang 并非由存储 I/O、NFS、OOM 或内核崩溃直接引起，而是**进程在内存管理路径（page fault）上等待 `mmap_sem` 读写信号量时被长时间阻塞**。结合内核版本与 Red Hat 官方缺陷记录，高度怀疑是 RHEL 7.6 初始内核 `3.10.0-957.el7.x86_64` 中 `rwsem` 实现存在的已知唤醒丢失缺陷（Red Hat Bugzilla 1690323 / 1547078）所致。该缺陷已在 `kernel-3.10.0-957.12.1.el7` 中修复。
 
@@ -16,7 +16,7 @@
 
 | 项目   | 内容                                                                                               |
 | ---- | ------------------------------------------------------------------------------------------------ |
-| 主机名  | hlsqhcdb1                                                                                        |
+| 主机名  | localhost                                                                                        |
 | 操作系统 | Red Hat Enterprise Linux Server release 7.6 (Maipo)                                              |
 | 内核版本 | 3.10.0-957.el7.x86_64（**未包含 rwsem 修复补丁**）                                                        |
 | 启动参数 | `crashkernel=auto rd.lvm.lv=rhel/root rd.lvm.lv=rhel/swap rhgb quiet transparent_hugepage=never` |
@@ -188,7 +188,7 @@ yum update kernel
 
 ## 8. 结论
 
-本次 `hlsqhcdb1` 整机 Hang 的直接原因是多个 Oracle RAC 进程在缺页异常路径上等待 `mmap_sem`，被 hung task 机制捕获。根本原因是 RHEL 7.6 初始内核 `3.10.0-957.el7.x86_64` 中 `rwsem` 实现存在已知唤醒丢失缺陷（Red Hat Bugzilla 1690323 / 1547078），该缺陷已在 `kernel-3.10.0-957.12.1.el7` 中修复。
+本次 `localhost` 整机 Hang 的直接原因是多个 Oracle RAC 进程在缺页异常路径上等待 `mmap_sem`，被 hung task 机制捕获。根本原因是 RHEL 7.6 初始内核 `3.10.0-957.el7.x86_64` 中 `rwsem` 实现存在已知唤醒丢失缺陷（Red Hat Bugzilla 1690323 / 1547078），该缺陷已在 `kernel-3.10.0-957.12.1.el7` 中修复。
 
 **建议尽快升级内核至 `3.10.0-957.12.1.el7` 或更高版本**，并在升级前采取临时缓解措施，同时加强 Oracle 集群日志和内存压力的监控。
 
@@ -198,35 +198,35 @@ yum update kernel
 ### A.1 Hung task（读锁等待）
 
 ```
-Oct 16 10:42:30 hlsqhcdb1 kernel: INFO: task orarootagent.bi:371345 blocked for more than 120 seconds.
-Oct 16 10:42:30 hlsqhcdb1 kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-Oct 16 10:42:30 hlsqhcdb1 kernel: orarootagent.bi D ffff948d1f39d140     0 371345      1 0x00000080
-Oct 16 10:42:30 hlsqhcdb1 kernel: Call Trace:
-Oct 16 10:42:30 hlsqhcdb1 kernel: [<ffffffff8c5e9134>] ? handle_pte_fault+0x2f4/0xd10
-Oct 16 10:42:30 hlsqhcdb1 kernel: [<ffffffff8cb67bc9>] schedule+0x29/0x70
-Oct 16 10:42:30 hlsqhcdb1 kernel: [<ffffffff8cb691fd>] rwsem_down_read_failed+0x10d/0x1a0
-Oct 16 10:42:30 hlsqhcdb1 kernel: [<ffffffff8c7869a8>] call_rwsem_down_read_failed+0x18/0x30
-Oct 16 10:42:30 hlsqhcdb1 kernel: [<ffffffff8cb66e80>] down_read+0x20/0x40
-Oct 16 10:42:30 hlsqhcdb1 kernel: [<ffffffff8cb6f7d8>] __do_page_fault+0x3f8/0x500
-Oct 16 10:42:30 hlsqhcdb1 kernel: [<ffffffff8cb6f915>] do_page_fault+0x35/0x90
-Oct 16 10:42:30 hlsqhcdb1 kernel: [<ffffffff8cb6b758>] page_fault+0x28/0x30
+Oct 16 10:42:30 localhost kernel: INFO: task orarootagent.bi:371345 blocked for more than 120 seconds.
+Oct 16 10:42:30 localhost kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+Oct 16 10:42:30 localhost kernel: orarootagent.bi D ffff948d1f39d140     0 371345      1 0x00000080
+Oct 16 10:42:30 localhost kernel: Call Trace:
+Oct 16 10:42:30 localhost kernel: [<ffffffff8c5e9134>] ? handle_pte_fault+0x2f4/0xd10
+Oct 16 10:42:30 localhost kernel: [<ffffffff8cb67bc9>] schedule+0x29/0x70
+Oct 16 10:42:30 localhost kernel: [<ffffffff8cb691fd>] rwsem_down_read_failed+0x10d/0x1a0
+Oct 16 10:42:30 localhost kernel: [<ffffffff8c7869a8>] call_rwsem_down_read_failed+0x18/0x30
+Oct 16 10:42:30 localhost kernel: [<ffffffff8cb66e80>] down_read+0x20/0x40
+Oct 16 10:42:30 localhost kernel: [<ffffffff8cb6f7d8>] __do_page_fault+0x3f8/0x500
+Oct 16 10:42:30 localhost kernel: [<ffffffff8cb6f915>] do_page_fault+0x35/0x90
+Oct 16 10:42:30 localhost kernel: [<ffffffff8cb6b758>] page_fault+0x28/0x30
 ```
 
 ### A.2 Hung task（写锁等待）
 
 ```
-Oct 16 10:42:31 hlsqhcdb1 kernel: INFO: task orarootagent.bi:371833 blocked for more than 120 seconds.
-Oct 16 10:42:31 hlsqhcdb1 kernel: orarootagent.bi D ffff94b01e3430c0     0 371833      1 0x00000080
-Oct 16 10:42:31 hlsqhcdb1 kernel: Call Trace:
-Oct 16 10:42:31 hlsqhcdb1 kernel: [<ffffffff8cb67bc9>] schedule+0x29/0x70
-Oct 16 10:42:31 hlsqhcdb1 kernel: [<ffffffff8cb694b5>] rwsem_down_write_failed+0x225/0x3a0
-Oct 16 10:42:31 hlsqhcdb1 kernel: [<ffffffff8c65e75b>] ? destroy_inode+0x3b/0x60
-Oct 16 10:42:31 hlsqhcdb1 kernel: [<ffffffff8c7869d7>] call_rwsem_down_write_failed+0x17/0x30
-Oct 16 10:42:31 hlsqhcdb1 kernel: [<ffffffff8cb66ecd>] down_write+0x2d/0x3d
-Oct 16 10:42:31 hlsqhcdb1 kernel: [<ffffffff8c5d60e0>] vm_mmap_pgoff+0xa0/0x120
-Oct 16 10:42:31 hlsqhcdb1 kernel: [<ffffffff8c5f07c6>] SyS_mmap_pgoff+0x116/0x270
-Oct 16 10:42:31 hlsqhcdb1 kernel: [<ffffffff8c430c22>] SyS_mmap+0x22/0x30
-Oct 16 10:42:31 hlsqhcdb1 kernel: [<ffffffff8cb74ddb>] system_call_fastpath+0x22/0x27
+Oct 16 10:42:31 localhost kernel: INFO: task orarootagent.bi:371833 blocked for more than 120 seconds.
+Oct 16 10:42:31 localhost kernel: orarootagent.bi D ffff94b01e3430c0     0 371833      1 0x00000080
+Oct 16 10:42:31 localhost kernel: Call Trace:
+Oct 16 10:42:31 localhost kernel: [<ffffffff8cb67bc9>] schedule+0x29/0x70
+Oct 16 10:42:31 localhost kernel: [<ffffffff8cb694b5>] rwsem_down_write_failed+0x225/0x3a0
+Oct 16 10:42:31 localhost kernel: [<ffffffff8c65e75b>] ? destroy_inode+0x3b/0x60
+Oct 16 10:42:31 localhost kernel: [<ffffffff8c7869d7>] call_rwsem_down_write_failed+0x17/0x30
+Oct 16 10:42:31 localhost kernel: [<ffffffff8cb66ecd>] down_write+0x2d/0x3d
+Oct 16 10:42:31 localhost kernel: [<ffffffff8c5d60e0>] vm_mmap_pgoff+0xa0/0x120
+Oct 16 10:42:31 localhost kernel: [<ffffffff8c5f07c6>] SyS_mmap_pgoff+0x116/0x270
+Oct 16 10:42:31 localhost kernel: [<ffffffff8c430c22>] SyS_mmap+0x22/0x30
+Oct 16 10:42:31 localhost kernel: [<ffffffff8cb74ddb>] system_call_fastpath+0x22/0x27
 ```
 
 
