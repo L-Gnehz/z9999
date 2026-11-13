@@ -1,1 +1,50 @@
+/* ==========================================
+   首页卡片样式定制 (Home Grid Customization)
+   ========================================== */
 
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+  margin-bottom: 3rem;
+}
+
+.home-card {
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  border: 1px solid var(--lightgray);
+  border-radius: 12px;
+  background-color: var(--light);
+  text-decoration: none !important; /* 去掉下划线 */
+  color: inherit !important;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+/* 鼠标悬停时的特效 */
+.home-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+  border-color: var(--secondary);
+  background-color: var(--lightgray); /* 暗色模式下会自动适配 */
+}
+
+.card-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.home-card h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  color: var(--secondary);
+}
+
+.home-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--darkgray);
+  line-height: 1.5;
+}
