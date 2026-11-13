@@ -1,3 +1,6 @@
+---
+publish: "true"
+---
 
 **报告日期**：2026-10-16  
 **分析对象**：localhost（RHEL 7.6，Oracle RAC 节点）  
